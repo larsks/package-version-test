@@ -46,7 +46,7 @@ jobs:
               v*.*.*) continue;;
             esac
 
-            git tag "$tag"
+            git tag -f "$tag"
           done
 
-          git push --tags
+          git push -f --tags
