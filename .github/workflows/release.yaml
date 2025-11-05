@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-release
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.semver.outputs.next }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Show log
+        run: |
+          git log --oneline --decorate
+
+      - name: Calculate version
+        id: metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ github.repository }}
+          flavor: |
+            latest=false
+          tags: |
+            type=semver,pattern=v{{version}}
+            type=semver,pattern=v{{major}}.{{minor}}
+            type=semver,pattern=v{{major}}
+
+      - name: Create tags
+        run: |
+          set -x
+          TAGS="${{env.DOCKER_METADATA_OUTPUT_TAG_NAMES}}"
+          for tag in $TAGS; do
+            case $tag in
+              v*.*.*) continue;;
+            esac
+
+            git tag "$tag"
+          done
+
+          git push --tags
